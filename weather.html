@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오늘 날씨</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      width: 320px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .location { font-size: 0.85rem; color: #888; margin-bottom: 0.5rem; }
+    .date     { font-size: 0.8rem;  color: #aaa; margin-bottom: 1.5rem; }
+
+    .icon  { font-size: 4rem; margin-bottom: 0.5rem; }
+    .temp  { font-size: 3rem; font-weight: 700; color: #1a1a1a; }
+    .desc  { font-size: 0.95rem; color: #555; margin-top: 0.3rem; margin-bottom: 1.5rem; }
+
+    .details {
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid #f0f0f0;
+      padding-top: 1.2rem;
+    }
+    .detail-item { text-align: center; }
+    .detail-val  { font-size: 1rem; font-weight: 600; color: #333; }
+    .detail-label{ font-size: 0.72rem; color: #aaa; margin-top: 0.2rem; }
+
+    .loading { color: #888; font-size: 0.9rem; padding: 2rem 0; }
+    .error   { color: #ef4444; font-size: 0.85rem; padding: 1rem 0; }
+  </style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="loading">위치 정보를 가져오는 중...</div>
+</div>
+
+<script>
+  const WMO = {
+    0:  ['☀️', '맑음'],
+    1:  ['🌤️', '대체로 맑음'],
+    2:  ['⛅', '구름 조금'],
+    3:  ['☁️', '흐림'],
+    45: ['🌫️', '안개'],
+    48: ['🌫️', '안개'],
+    51: ['🌦️', '이슬비'],
+    53: ['🌦️', '이슬비'],
+    55: ['🌧️', '강한 이슬비'],
+    61: ['🌧️', '비'],
+    63: ['🌧️', '비'],
+    65: ['🌧️', '강한 비'],
+    71: ['🌨️', '눈'],
+    73: ['🌨️', '눈'],
+    75: ['❄️', '강한 눈'],
+    80: ['🌦️', '소나기'],
+    81: ['🌧️', '소나기'],
+    82: ['⛈️', '강한 소나기'],
+    95: ['⛈️', '뇌우'],
+    99: ['⛈️', '강한 뇌우'],
+  };
+
+  function getWeatherInfo(code) {
+    return WMO[code] || ['🌡️', '알 수 없음'];
+  }
+
+  function formatDate() {
+    const d = new Date();
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  }
+
+  async function fetchWeather(lat, lon) {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weathercode&timezone=auto`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    return data.current;
+  }
+
+  async function fetchLocation(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const addr = data.address;
+    return addr.city || addr.town || addr.county || addr.state || '내 위치';
+  }
+
+  function render(city, weather) {
+    const [icon, desc] = getWeatherInfo(weather.weathercode);
+    document.getElementById('card').innerHTML = `
+      <div class="location">📍 ${city}</div>
+      <div class="date">${formatDate()}</div>
+      <div class="icon">${icon}</div>
+      <div class="temp">${Math.round(weather.temperature_2m)}°C</div>
+      <div class="desc">${desc}</div>
+      <div class="details">
+        <div class="detail-item">
+          <div class="detail-val">${weather.relative_humidity_2m}%</div>
+          <div class="detail-label">습도</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-val">${Math.round(weather.wind_speed_10m)} km/h</div>
+          <div class="detail-label">바람</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function showError(msg) {
+    document.getElementById('card').innerHTML = `<div class="error">⚠️ ${msg}</div>`;
+  }
+
+  async function loadWeather(lat, lon, cityName) {
+    try {
+      const weather = await fetchWeather(lat, lon);
+      const city = cityName || await fetchLocation(lat, lon);
+      render(city, weather);
+    } catch(e) {
+      showError('날씨 정보를 불러오지 못했습니다.');
+    }
+  }
+
+  // 위치 권한 없으면 서울 기본값
+  const fallback = () => loadWeather(37.5665, 126.9780, '서울');
+
+  if (navigator.geolocation) {
+    const timer = setTimeout(fallback, 3000); // 3초 안에 응답 없으면 서울로
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        clearTimeout(timer);
+        loadWeather(coords.latitude, coords.longitude);
+      },
+      () => { clearTimeout(timer); fallback(); }
+    );
+  } else {
+    fallback();
+  }
+</script>
+</body>
+</html>

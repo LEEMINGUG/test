@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>내 공부 일지</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f9f9;
+      --surface: #ffffff;
+      --border: #e5e5e5;
+      --text: #1a1a1a;
+      --muted: #888;
+      --accent: #3b82f6;
+      --accent-light: #eff6ff;
+      --tag-bg: #f0f0f0;
+      --danger: #ef4444;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.5px; }
+    .logo span { color: var(--accent); }
+    .header-stats { display: flex; gap: 1.5rem; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 0.7rem; color: var(--muted); }
+
+    /* ── Layout ── */
+    .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── Write Form ── */
+    .write-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .write-card h2 { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+
+    .form-row { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
+    label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+    input[type="text"], input[type="date"], textarea, select {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); background: var(--surface); }
+    textarea { resize: vertical; min-height: 100px; }
+
+    .tag-input-wrap { position: relative; }
+    .tag-input-wrap input { padding-right: 5rem; }
+    .tag-hint { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.7rem; color: var(--muted); pointer-events: none; }
+
+    .form-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1.2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary { background: var(--tag-bg); color: var(--text); }
+    .btn-secondary:hover { background: var(--border); }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-bar input[type="text"] {
+      flex: 1;
+      min-width: 180px;
+      background: var(--surface);
+    }
+    .filter-chip {
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--muted);
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Log entries ── */
+    .entries-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .entries-title { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .entries-count { font-size: 0.8rem; color: var(--muted); }
+
+    .entry-group { margin-bottom: 1.75rem; }
+    .entry-date-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      padding-left: 0.25rem;
+    }
+
+    .entry-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.5rem;
+      transition: border-color 0.15s;
+    }
+    .entry-card:hover { border-color: #c5d5f0; }
+
+    .entry-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .entry-title { font-size: 0.95rem; font-weight: 600; line-height: 1.4; }
+    .entry-meta { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+    .entry-time { font-size: 0.75rem; color: var(--muted); }
+
+    .difficulty {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .diff-easy   { background: #dcfce7; color: #166534; }
+    .diff-medium { background: #fef9c3; color: #854d0e; }
+    .diff-hard   { background: #fee2e2; color: #991b1b; }
+
+    .entry-body { margin-top: 0.5rem; font-size: 0.88rem; line-height: 1.6; color: #444; white-space: pre-wrap; }
+    .entry-body.collapsed { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .entry-footer {
+      margin-top: 0.6rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .entry-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .tag {
+      font-size: 0.72rem;
+      background: var(--tag-bg);
+      color: var(--muted);
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .tag:hover { background: var(--accent-light); color: var(--accent); }
+
+    .entry-actions { display: flex; gap: 0.4rem; }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 0.2rem 0.4rem;
+      border-radius: 6px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .icon-btn:hover { background: var(--tag-bg); color: var(--text); }
+    .icon-btn.delete:hover { background: #fee2e2; color: var(--danger); }
+
+    .expand-btn {
+      font-size: 0.75rem;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
+      margin-top: 0.25rem;
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .empty p { font-size: 0.9rem; }
+
+    /* ── Edit modal ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1.25rem; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      header { padding: 0 1rem; }
+      .form-row { flex-direction: column; }
+      .header-stats { gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Dev<span>Log</span></div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-num" id="totalCount">0</div><div class="stat-label">총 기록</div></div>
+    <div class="stat"><div class="stat-num" id="weekCount">0</div><div class="stat-label">이번 주</div></div>
+    <div class="stat"><div class="stat-num" id="streakCount">0</div><div class="stat-label">연속 일수</div></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Write Form -->
+  <div class="write-card">
+    <h2>새 공부 기록</h2>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>주제 / 제목</label>
+        <input type="text" id="inp-title" placeholder="예: React useEffect 동작 원리" />
+      </div>
+      <div class="form-group">
+        <label>날짜</label>
+        <input type="date" id="inp-date" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>내용</label>
+        <textarea id="inp-body" placeholder="오늘 배운 것, 느낀 점, 막혔던 부분 등을 자유롭게 적어보세요."></textarea>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>태그</label>
+        <div class="tag-input-wrap">
+          <input type="text" id="inp-tags" placeholder="JavaScript, React, CS..." />
+          <span class="tag-hint">쉼표로 구분</span>
+        </div>
+      </div>
+      <div class="form-group" style="flex:0 0 130px">
+        <label>난이도</label>
+        <select id="inp-diff">
+          <option value="easy">쉬움</option>
+          <option value="medium" selected>보통</option>
+          <option value="hard">어려움</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="clearForm()">초기화</button>
+      <button class="btn-primary" onclick="saveEntry()">기록 저장</button>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter-bar">
+    <input type="text" id="search" placeholder="🔍  제목, 내용, 태그 검색..." oninput="renderEntries()" />
+    <button class="filter-chip active" data-diff="all" onclick="setFilter(this)">전체</button>
+    <button class="filter-chip" data-diff="easy" onclick="setFilter(this)">쉬움</button>
+    <button class="filter-chip" data-diff="medium" onclick="setFilter(this)">보통</button>
+    <button class="filter-chip" data-diff="hard" onclick="setFilter(this)">어려움</button>
+  </div>
+
+  <!-- Entries -->
+  <div class="entries-header">
+    <span class="entries-title">공부 기록</span>
+    <span class="entries-count" id="filteredCount"></span>
+  </div>
+  <div id="entries-list"></div>
+
+</div>
+
+<!-- Edit Modal -->
+<div class="overlay" id="editOverlay" onclick="closeModal(event)">
+  <div class="modal" id="editModal">
+    <h3>기록 수정</h3>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>주제 / 제목</label>
+        <input type="text" id="edit-title" />
+      </div>
+      <div class="form-group">
+        <label>날짜</label>
+        <input type="date" id="edit-date" />
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0.75rem">
+      <label>내용</label>
+      <textarea id="edit-body" style="min-height:120px"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>태그</label>
+        <input type="text" id="edit-tags" />
+      </div>
+      <div class="form-group" style="flex:0 0 130px">
+        <label>난이도</label>
+        <select id="edit-diff">
+          <option value="easy">쉬움</option>
+          <option value="medium">보통</option>
+          <option value="hard">어려움</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:1rem">
+      <button class="btn-secondary" onclick="document.getElementById('editOverlay').classList.remove('open')">취소</button>
+      <button class="btn-primary" onclick="updateEntry()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'devlog_entries';
+  let entries = [];
+  try {
+    entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch(e) {
+    console.error('localStorage 로드 실패:', e);
+    entries = [];
+  }
+  let currentFilter = 'all';
+  let editingId = null;
+  let expanded = {};
+
+  // local date (not UTC)
+  function localToday() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const today = localToday();
+  document.getElementById('inp-date').value = today;
+
+  function saveToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    } catch(e) {
+      console.error('localStorage 저장 실패:', e);
+    }
+  }
+
+  function showToast(msg) {
+    let t = document.getElementById('toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'toast';
+      t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:0.6rem 1.4rem;border-radius:999px;font-size:0.85rem;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+  }
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+
+  function parseTags(str) {
+    return str.split(',').map(t => t.trim()).filter(Boolean);
+  }
+
+  function saveEntry() {
+    const title = document.getElementById('inp-title').value.trim();
+    const body  = document.getElementById('inp-body').value.trim();
+    const date  = document.getElementById('inp-date').value;
+    const tags  = parseTags(document.getElementById('inp-tags').value);
+    const diff  = document.getElementById('inp-diff').value;
+
+    if (!title) { alert('제목을 입력해주세요.'); return; }
+    if (!date)  { alert('날짜를 선택해주세요.'); return; }
+
+    entries.unshift({ id: uid(), title, body, date, tags, diff, created: Date.now() });
+    saveToStorage();
+    clearForm();
+    renderEntries();
+    renderStats();
+    showToast('기록이 저장되었습니다 ✓');
+  }
+
+  function clearForm() {
+    document.getElementById('inp-title').value = '';
+    document.getElementById('inp-body').value  = '';
+    document.getElementById('inp-tags').value  = '';
+    document.getElementById('inp-date').value  = today;
+    document.getElementById('inp-diff').value  = 'medium';
+  }
+
+  function deleteEntry(id) {
+    if (!confirm('정말 삭제할까요?')) return;
+    entries = entries.filter(e => e.id !== id);
+    saveToStorage();
+    renderEntries();
+    renderStats();
+  }
+
+  function openEdit(id) {
+    const e = entries.find(x => x.id === id);
+    if (!e) return;
+    editingId = id;
+    document.getElementById('edit-title').value = e.title;
+    document.getElementById('edit-body').value  = e.body;
+    document.getElementById('edit-date').value  = e.date;
+    document.getElementById('edit-tags').value  = e.tags.join(', ');
+    document.getElementById('edit-diff').value  = e.diff;
+    document.getElementById('editOverlay').classList.add('open');
+  }
+
+  function updateEntry() {
+    const e = entries.find(x => x.id === editingId);
+    if (!e) return;
+    e.title = document.getElementById('edit-title').value.trim();
+    e.body  = document.getElementById('edit-body').value.trim();
+    e.date  = document.getElementById('edit-date').value;
+    e.tags  = parseTags(document.getElementById('edit-tags').value);
+    e.diff  = document.getElementById('edit-diff').value;
+    saveToStorage();
+    document.getElementById('editOverlay').classList.remove('open');
+    renderEntries();
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('editOverlay')) {
+      document.getElementById('editOverlay').classList.remove('open');
+    }
+  }
+
+  function setFilter(el) {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    currentFilter = el.dataset.diff;
+    renderEntries();
+  }
+
+  function filterByTag(tag) {
+    document.getElementById('search').value = tag;
+    renderEntries();
+  }
+
+  function getFiltered() {
+    const q = document.getElementById('search').value.toLowerCase();
+    return entries.filter(e => {
+      const diffMatch = currentFilter === 'all' || e.diff === currentFilter;
+      const textMatch = !q ||
+        e.title.toLowerCase().includes(q) ||
+        e.body.toLowerCase().includes(q) ||
+        e.tags.some(t => t.toLowerCase().includes(q));
+      return diffMatch && textMatch;
+    });
+  }
+
+  function groupByDate(list) {
+    const map = {};
+    list.forEach(e => {
+      (map[e.date] = map[e.date] || []).push(e);
+    });
+    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+  }
+
+  function formatDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  }
+
+  function diffLabel(d) {
+    return { easy: '쉬움', medium: '보통', hard: '어려움' }[d] || d;
+  }
+
+  function renderEntries() {
+    const list = getFiltered();
+    const container = document.getElementById('entries-list');
+    document.getElementById('filteredCount').textContent = `${list.length}개`;
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">📝</div>
+          <p>아직 기록이 없어요.<br>첫 번째 공부 기록을 남겨보세요!</p>
+        </div>`;
+      return;
+    }
+
+    const groups = groupByDate(list);
+    container.innerHTML = groups.map(([date, items]) => `
+      <div class="entry-group">
+        <div class="entry-date-label">${formatDate(date)}</div>
+        ${items.map(e => {
+          const isLong = e.body.length > 150;
+          const isExpanded = expanded[e.id];
+          return `
+          <div class="entry-card">
+            <div class="entry-top">
+              <div class="entry-title">${escHtml(e.title)}</div>
+              <div class="entry-meta">
+                <span class="difficulty diff-${e.diff}">${diffLabel(e.diff)}</span>
+              </div>
+            </div>
+            ${e.body ? `
+              <div class="entry-body ${isLong && !isExpanded ? 'collapsed' : ''}">${escHtml(e.body)}</div>
+              ${isLong ? `<button class="expand-btn" onclick="toggleExpand('${e.id}')">${isExpanded ? '접기 ▲' : '더 보기 ▼'}</button>` : ''}
+            ` : ''}
+            <div class="entry-footer">
+              <div class="entry-tags">
+                ${e.tags.map(t => `<span class="tag" onclick="filterByTag('${escHtml(t)}')">#${escHtml(t)}</span>`).join('')}
+              </div>
+              <div class="entry-actions">
+                <button class="icon-btn" onclick="openEdit('${e.id}')" title="수정">✏️</button>
+                <button class="icon-btn delete" onclick="deleteEntry('${e.id}')" title="삭제">🗑️</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('');
+  }
+
+  function toggleExpand(id) {
+    expanded[id] = !expanded[id];
+    renderEntries();
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function renderStats() {
+    document.getElementById('totalCount').textContent = entries.length;
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    const weekStr = weekAgo.toISOString().split('T')[0];
+    const weekCnt = entries.filter(e => e.date >= weekStr).length;
+    document.getElementById('weekCount').textContent = weekCnt;
+
+    // Streak: consecutive days up to today
+    const dates = [...new Set(entries.map(e => e.date))].sort((a,b) => b.localeCompare(a));
+    let streak = 0;
+    let cur = new Date(today + 'T00:00:00');
+    for (const d of dates) {
+      const dStr = cur.toISOString().split('T')[0];
+      if (d === dStr) {
+        streak++;
+        cur.setDate(cur.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    document.getElementById('streakCount').textContent = streak;
+  }
+
+  // Init
+  renderEntries();
+  renderStats();
+</script>
+</body>
+</html>
